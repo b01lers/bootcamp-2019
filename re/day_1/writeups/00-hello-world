@@ -1,0 +1,136 @@
+ Before we get started on the first reversing we'll need some tools.
+
+ If you don't already have linux, you'll need that. I'm not gonna cover that.
+
+ You'll also need gdb. Use your package manager of choice, some examples:
+ 	sudo apt install gdb
+	pacman -S gdb
+	rpm install gdb
+	yum install gdb
+	...etc...
+
+That's all for now, let's get started. Any of my notes in the middle of stuff are gonna be in /* <MY STUFF> */
+
+So we'll run:
+~ gdb -q ./00-hello-world 
+
+To get going. After that, let's get disassemblin. Run: 
+gdb> info function
+
+	All defined functions:
+
+	File 00-hello-world.c:
+	7:      int main(int, char **); /* We care about this, this is the user-defined function here */
+
+	Non-debugging symbols:
+	0x0000000000001000  _init
+	0x0000000000001030  puts@plt
+	0x0000000000001040  __stack_chk_fail@plt
+	0x0000000000001050  _start
+	0x0000000000001080  deregister_tm_clones
+	0x00000000000010b0  register_tm_clones
+	0x00000000000010f0  __do_global_dtors_aux
+	0x0000000000001140  frame_dummy
+	0x00000000000011b0  __libc_csu_init
+	0x0000000000001220  __libc_csu_fini
+	0x0000000000001228  _fini
+
+This tells us two things. The first part tells us there is one user-defined function (note we compiled with debugging symbols) called main. It also tells us what imported functions are present (the section after Non-debugging symbols). Let's disassmeble main and take a look at what it does. Each line is annotated below but I'll talk about it more in depth below.
+
+gdb > disas main
+
+   /* setup
+   0x0000000000001149 <+0>:     push   rbp
+   0x000000000000114a <+1>:     mov    rbp,rsp
+   0x000000000000114d <+4>:     sub    rsp,0x30
+   0x0000000000001151 <+8>:     mov    DWORD PTR [rbp-0x24],edi
+   0x0000000000001154 <+11>:    mov    QWORD PTR [rbp-0x30],rsi
+   0x0000000000001158 <+15>:    mov    rax,QWORD PTR fs:0x28
+   0x0000000000001161 <+24>:    mov    QWORD PTR [rbp-0x8],rax
+   0x0000000000001165 <+28>:    xor    eax,eax
+   */
+   /* char str[] = "Hello world!";
+   0x0000000000001167 <+30>:    movabs rax,0x6f77206f6c6c6548 /* Loads this literal value into rax */
+   0x0000000000001171 <+40>:    mov    QWORD PTR [rbp-0x15],rax /* Loads the value onto the stack */
+   0x0000000000001175 <+44>:    mov    DWORD PTR [rbp-0xd],0x21646c72 /* Loads this value onto the stack */ 
+   0x000000000000117c <+51>:    mov    BYTE PTR [rbp-0x9],0x0 /* Loads this single zero onto the stack */
+   */
+   /* printf("%s\n", str);
+   0x0000000000001180 <+55>:    lea    rax,[rbp-0x15] /* Loads a pointer to the start of the string into rax */
+   0x0000000000001184 <+59>:    mov    rdi,rax /* Copy the pointer to rdi */
+   0x0000000000001187 <+62>:    call   0x1030 <puts@plt> /* Call puts with the argument rdi */
+   */
+   /* return 0
+   0x000000000000118c <+67>:    mov    eax,0x0
+   /* teardown
+   0x0000000000001191 <+72>:    mov    rdx,QWORD PTR [rbp-0x8]
+   0x0000000000001195 <+76>:    xor    rdx,QWORD PTR fs:0x28
+   0x000000000000119e <+85>:    je     0x11a5 <main+92>
+   0x00000000000011a0 <+87>:    call   0x1040 <__stack_chk_fail@plt>
+   0x00000000000011a5 <+92>:    leave  
+   0x00000000000011a6 <+93>:    ret
+   */
+
+Let's track what's going on, step by step.
+First there's some function setup. We're not going to worry about this too much yet but keep it in mind for when we talk about pwn. Next, the string "Hello world!" is put on the stack, but notice how this is done. We're in 64 bit, so the program can easily just move the first part of the string statically:
+	0x6f77206f6c6c6548 = 0x6f 0x77 0x20 0x6f 0x6c 0x6c 0x65 0x48 = "ow olleH"
+Notice this is backwards due to endianness in this case being "little endian", where the least significant bit is first.
+This absolute value is placed into the register rax and placed onto the stack at [rbp-0x15]. You may recall that rbp is a reserved register called the base pointer, which points to the top of the stack. So our stack right now looks like this:
+
+[rbp] = ???
+...
+[-0x0e] = "o"
+[-0x0f] = "w"
+[-0x10] = " "
+[-0x11] = "o"
+[-0x12] = "l"
+[-0x13] = "l"
+[-0x14] = "e"
+[-0x15] = "H"
+
+We can see how the string forms on the stack now, and how the program will interface with the structure. Next, we have a static move (without movabs) to put the rest of the string on the stack:
+	0x21646c72 = 0x21 0x64 0x6c 0x72 = "!dlr'
+This is in little endian and the MSB of this string will be placed at the location specified in the mov [rbp-0xd] so our new stack looks like:
+
+[rbp] = ???
+...
+[-0x0a] = "!"
+[-0x0b] = "d"
+[-0x0c] = "l"
+[-0x0d] = "r"
+[-0x0e] = "o"
+[-0x0f] = "w"
+[-0x10] = " "
+[-0x11] = "o"
+[-0x12] = "l"
+[-0x13] = "l"
+[-0x14] = "e"
+[-0x15] = "H"
+
+And finally the program moves a zero onto the stack at [rbp-0x09], leaving our final stack:
+
+[rbp] = ???
+...
+[-0x09] = "\0"
+[-0x0a] = "!"
+[-0x0b] = "d"
+[-0x0c] = "l"
+[-0x0d] = "r"
+[-0x0e] = "o"
+[-0x0f] = "w"
+[-0x10] = " "
+[-0x11] = "o"
+[-0x12] = "l"
+[-0x13] = "l"
+[-0x14] = "e"
+[-0x15] = "H"
+
+We then get a pointer to [rbp-0x15] and call printf with that pointer as an argument, which prints out our string. Finally, a zero is moved into eax and returned, and we've successfully gone through the first steps of reversing!
+
+Note that from this point on I won't be drawing out the stack byte by byte, I'll be denoting the pointer to the start of a variable and the value of that variable like so:
+
+[rbp] = ???
+...
+[rbp-0x15] = "Hello world!"
+
+The important thing to remember as far as tracking the stack goes is that the stack grows down, with the base pointer (rbp or ebp) at the top.

@@ -1,0 +1,198 @@
+Now we're going to take a look at how selection structures in C look in assembly. Typically these are going to be if / else / switch statements. 
+
+gdb -q ./01-selection
+
+gdb> disas main
+
+   0x00000000000012c4 <+0>:     push   rbp
+   0x00000000000012c5 <+1>:     mov    rbp,rsp
+   0x00000000000012c8 <+4>:     sub    rsp,0x20
+   0x00000000000012cc <+8>:     mov    DWORD PTR [rbp-0x14],edi
+   0x00000000000012cf <+11>:    mov    QWORD PTR [rbp-0x20],rsi
+   0x00000000000012d3 <+15>:    cmp    DWORD PTR [rbp-0x14],0x2
+   0x00000000000012d7 <+19>:    je     0x12ef <main+43>
+   0x00000000000012d9 <+21>:    lea    rdi,[rip+0xea7]        # 0x2187
+   0x00000000000012e0 <+28>:    call   0x1030 <puts@plt>
+   0x00000000000012e5 <+33>:    mov    edi,0x1
+   0x00000000000012ea <+38>:    call   0x1050 <exit@plt>
+   0x00000000000012ef <+43>:    mov    rax,QWORD PTR [rbp-0x20]
+   0x00000000000012f3 <+47>:    add    rax,0x8
+   0x00000000000012f7 <+51>:    mov    rax,QWORD PTR [rax]
+   0x00000000000012fa <+54>:    mov    rdi,rax
+   0x00000000000012fd <+57>:    call   0x1040 <atoi@plt>
+   0x0000000000001302 <+62>:    mov    DWORD PTR [rbp-0x4],eax
+   0x0000000000001305 <+65>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x0000000000001308 <+68>:    mov    edi,eax
+   0x000000000000130a <+70>:    call   0x1159 <basic_if>
+   0x000000000000130f <+75>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x0000000000001312 <+78>:    mov    edi,eax
+   0x0000000000001314 <+80>:    call   0x118b <if_else>
+   0x0000000000001319 <+85>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x000000000000131c <+88>:    mov    edi,eax
+   0x000000000000131e <+90>:    call   0x11b9 <elif>
+   0x0000000000001323 <+95>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x0000000000001326 <+98>:    mov    edi,eax
+   0x0000000000001328 <+100>:   call   0x1201 <switches>
+   0x000000000000132d <+105>:   mov    eax,0x0
+   0x0000000000001332 <+110>:   leave
+   0x0000000000001333 <+111>:   ret
+
+Let's look at the important things. First, we have a comparison:
+   0x00000000000012d3 <+15>:    cmp    DWORD PTR [rbp-0x14],0x2
+   0x00000000000012d7 <+19>:    je     0x12ef <main+43>
+If this comparison fails, we continue execution as normal and keep stepping past this instruction. However, if the comparison succeeds (ie [rbp-0x14] == 0x2) we do a jump to <main+43>. Now, since this is in main and right at the top, the stack arguments are going to be:
+	int argc
+	char ** argv
+
+We're checking to see whether our argc (the number of arguments to main) is 2. If it isn't, we call a print:
+   0x00000000000012e0 <+28>:    call   0x1030 <puts@plt>
+And then an exit:
+   0x00000000000012ea <+38>:    call   0x1050 <exit@plt>
+
+
+Since main is (like before) just a carrier that calls other functions, let's look at the calls. We have a call to atoi:
+   0x00000000000012fd <+57>:    call   0x1040 <atoi@plt>
+   0x0000000000001302 <+62>:    mov    DWORD PTR [rbp-0x4],eax
+Which makes an integer from an argument. We already determined the program would exit if it didn't have an argument, and now we know it's got to be an integer. That integer is then stored on the stack at [rbp-0x4].
+
+Let's look at the next call:
+   0x0000000000001305 <+65>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x0000000000001308 <+68>:    mov    edi,eax
+   0x000000000000130a <+70>:    call   0x1159 <basic_if>
+
+We have our input argument moved into edi and then we call the function basic_if. edi is the lower 4 bytes of rdi, the first register in the calling convention for sysv. So, let's look at basic_if:
+
+gdb> disas basic_if
+
+   # --- Stack frame setup
+   0x0000000000001159 <+0>:     push   rbp
+   0x000000000000115a <+1>:     mov    rbp,rsp
+   0x000000000000115d <+4>:     sub    rsp,0x10
+   # --- End stack frame setup
+   0x0000000000001161 <+8>:     mov    DWORD PTR [rbp-0x4],edi 	# we move the argument onto the stack
+   0x0000000000001164 <+11>:    cmp    DWORD PTR [rbp-0x4],0x3 	# we then compare the argument to a static 0x3
+   0x0000000000001168 <+15>:    jne    0x1176 <basic_if+29> 	# if it is not equal to 3 we jump to +29
+   0x000000000000116a <+17>:    lea    rdi,[rip+0xe93]        	# if it is equal to 3 we load into rdi
+   0x0000000000001171 <+24>:    call   0x1030 <puts@plt> 		# and we call puts to print whatever we just loaded
+   0x0000000000001176 <+29>:    cmp    DWORD PTR [rbp-0x4],0x5 	# if it is not equal to 3, then we compare it to 5.
+   0x000000000000117a <+33>:    jne    0x1188 <basic_if+47> 	# if it is not equal to 5, we jump to +47
+   0x000000000000117c <+35>:    lea    rdi,[rip+0xe98]        	#  if it is equal to 5 we load into rdi
+   0x0000000000001183 <+42>:    call   0x1030 <puts@plt> 		# and call puts to print whatever the other load does
+   # --- End of function/teardown and return
+   0x0000000000001188 <+47>:    nop 
+   0x0000000000001189 <+48>:    leave
+   0x000000000000118a <+49>:    ret
+
+I've annotated the disassembly above instead of copying blocks.
+
+Now that we know that it takes an input, prints one thing if that input = 3, and something else if that input = 5, we understand the function! This is a block with two if statements.
+
+Now let's disassemble if_else:
+
+gdb> disas if_else
+
+   # --- Stack frame setup
+   0x000000000000118b <+0>:     push   rbp
+   0x000000000000118c <+1>:     mov    rbp,rsp
+   0x000000000000118f <+4>:     sub    rsp,0x10
+   # --- End stack frame setup
+   0x0000000000001193 <+8>:     mov    DWORD PTR [rbp-0x4],edi 	# we move the argument onto the stack
+   0x0000000000001196 <+11>:    cmp    DWORD PTR [rbp-0x4],0xa 	# we then compare the argument to 10
+   0x000000000000119a <+15>:    jne    0x11aa <if_else+31> 		# if it is not equal to 10 we jump to +31
+   0x000000000000119c <+17>:    lea    rdi,[rip+0xe8f]          # if it is equal we load a pointer to some data into rdi
+   0x00000000000011a3 <+24>:    call   0x1030 <puts@plt> 		# we print the data
+   0x00000000000011a8 <+29>:    jmp    0x11b6 <if_else+43> 		# we then unconditionally jump to +43 (the end)
+   0x00000000000011aa <+31>:    lea    rdi,[rip+0xe9a]        	# if we were not equal before, we load a different data
+   0x00000000000011b1 <+38>:    call   0x1030 <puts@plt> 		# and print it!
+   # --- End of function/ teardown and return
+   0x00000000000011b6 <+43>:    nop 
+   0x00000000000011b7 <+44>:    leave
+   0x00000000000011b8 <+45>:    ret
+
+As you can see, the structure of this function is different in a subtle way. First, we only compare once, and then from that we either go one way or we go the other. We cannot get the program to enter both blocks. With some practice you'll be able to tell this is an if/else statement because of the unconditional jump after the code when the condition is satisfied.
+
+Let's move on and look at elif. By now, you should be able to basically figure out what's going on:
+
+gdb> disas elif
+
+   # --- Stack frame setup
+   0x00000000000011b9 <+0>:     push   rbp
+   0x00000000000011ba <+1>:     mov    rbp,rsp
+   0x00000000000011bd <+4>:     sub    rsp,0x10
+   # --- End stack frame setup
+   0x00000000000011c1 <+8>:     mov    DWORD PTR [rbp-0x4],edi
+   0x00000000000011c4 <+11>:    cmp    DWORD PTR [rbp-0x4],0x64
+   0x00000000000011c8 <+15>:    jne    0x11d8 <elif+31>
+   0x00000000000011ca <+17>:    lea    rdi,[rip+0xe97]        
+   0x00000000000011d1 <+24>:    call   0x1030 <puts@plt>
+   0x00000000000011d6 <+29>:    jmp    0x11fe <elif+69>
+   0x00000000000011d8 <+31>:    cmp    DWORD PTR [rbp-0x4],0x65
+   0x00000000000011dc <+35>:    jne    0x11ec <elif+51>
+   0x00000000000011de <+37>:    lea    rdi,[rip+0xea1]       
+   0x00000000000011e5 <+44>:    call   0x1030 <puts@plt>
+   0x00000000000011ea <+49>:    jmp    0x11fe <elif+69>
+   0x00000000000011ec <+51>:    cmp    DWORD PTR [rbp-0x4],0x66
+   0x00000000000011f0 <+55>:    jne    0x11fe <elif+69>
+   0x00000000000011f2 <+57>:    lea    rdi,[rip+0xeab]
+   0x00000000000011f9 <+64>:    call   0x1030 <puts@plt>
+   0x00000000000011fe <+69>:    nop
+   0x00000000000011ff <+70>:    leave
+   0x0000000000001200 <+71>:    ret
+
+We see we have two blocks after compares that end in unconditional jumps. We also see that our first jump jumps to a second compare, but otherwise this looks very much like if/else with an extra block and an extra compare. That's because (surprise) it is! This is an if/else if/else if block, with nothing unconditionally executed.
+
+
+The last one is a little more complicated though, let's look at switches:
+
+   0x0000000000001201 <+0>:     push   rbp
+   0x0000000000001202 <+1>:     mov    rbp,rsp
+   0x0000000000001205 <+4>:     sub    rsp,0x10
+   0x0000000000001209 <+8>:     mov    DWORD PTR [rbp-0x4],edi
+   0x000000000000120c <+11>:    cmp    DWORD PTR [rbp-0x4],0x3eb
+   0x0000000000001213 <+18>:    je     0x1282 <switches+129>
+   0x0000000000001215 <+20>:    cmp    DWORD PTR [rbp-0x4],0x3eb
+   0x000000000000121c <+27>:    jg     0x123b <switches+58>
+   0x000000000000121e <+29>:    cmp    DWORD PTR [rbp-0x4],0x3e9
+   0x0000000000001225 <+36>:    je     0x1266 <switches+101>
+   0x0000000000001227 <+38>:    cmp    DWORD PTR [rbp-0x4],0x3e9
+   0x000000000000122e <+45>:    jg     0x1274 <switches+115>
+   0x0000000000001230 <+47>:    cmp    DWORD PTR [rbp-0x4],0x3e8
+   0x0000000000001237 <+54>:    je     0x1258 <switches+87>
+   0x0000000000001239 <+56>:    jmp    0x12b4 <switches+179>
+   0x000000000000123b <+58>:    cmp    DWORD PTR [rbp-0x4],0x7d1
+   0x0000000000001242 <+65>:    je     0x129c <switches+155>
+   0x0000000000001244 <+67>:    cmp    DWORD PTR [rbp-0x4],0x7d2
+   0x000000000000124b <+74>:    je     0x12a8 <switches+167>
+   0x000000000000124d <+76>:    cmp    DWORD PTR [rbp-0x4],0x7d0
+   0x0000000000001254 <+83>:    je     0x1290 <switches+143>
+   0x0000000000001256 <+85>:    jmp    0x12b4 <switches+179>
+   0x0000000000001258 <+87>:    lea    rdi,[rip+0xe63]        # 0x20c2
+   0x000000000000125f <+94>:    call   0x1030 <puts@plt>
+   0x0000000000001264 <+99>:    jmp    0x12c1 <switches+192>
+   0x0000000000001266 <+101>:   lea    rdi,[rip+0xe6d]        # 0x20da
+   0x000000000000126d <+108>:   call   0x1030 <puts@plt>
+   0x0000000000001272 <+113>:   jmp    0x12c1 <switches+192>
+   0x0000000000001274 <+115>:   lea    rdi,[rip+0xe77]        # 0x20f2
+   0x000000000000127b <+122>:   call   0x1030 <puts@plt>
+   0x0000000000001280 <+127>:   jmp    0x12c1 <switches+192>
+   0x0000000000001282 <+129>:   lea    rdi,[rip+0xe81]        # 0x210a
+   0x0000000000001289 <+136>:   call   0x1030 <puts@plt>
+   0x000000000000128e <+141>:   jmp    0x12c1 <switches+192>
+   0x0000000000001290 <+143>:   lea    rdi,[rip+0xe8b]        # 0x2122
+   0x0000000000001297 <+150>:   call   0x1030 <puts@plt>
+   0x000000000000129c <+155>:   lea    rdi,[rip+0xe97]        # 0x213a
+   0x00000000000012a3 <+162>:   call   0x1030 <puts@plt>
+   0x00000000000012a8 <+167>:   lea    rdi,[rip+0xea3]        # 0x2152
+   0x00000000000012af <+174>:   call   0x1030 <puts@plt>
+   0x00000000000012b4 <+179>:   lea    rdi,[rip+0xeaf]        # 0x216a
+   0x00000000000012bb <+186>:   call   0x1030 <puts@plt>
+   0x00000000000012c0 <+191>:   nop
+   0x00000000000012c1 <+192>:   nop
+   0x00000000000012c2 <+193>:   leave
+   0x00000000000012c3 <+194>:   ret
+
+At the top, we have a long chain of cmp and jump instructions. This is called a jump table, and is indicative of a switch statement. First, the statement places our argument on the stack. It then compares to a sequence of values, with a different type of jump for each. Since switch statements fall through without a break, the compiler does some optimization to ensure that as few values are checked as possible. We can tell which statements have breaks because of the unconditional jump at the end of their block of code:
+   0x0000000000001282 <+129>:   lea    rdi,[rip+0xe81]        # 0x210a
+   0x0000000000001289 <+136>:   call   0x1030 <puts@plt>
+   0x000000000000128e <+141>:   jmp    0x12c1 <switches+192>
+Jump tables like this can get complicated but they always follow the same pattern, regardless of optimizations. So with some work and a pen and paper you can reconstruct the switch statement if needed.

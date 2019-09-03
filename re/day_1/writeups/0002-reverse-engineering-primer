@@ -1,0 +1,53 @@
+There are a lot of ways to reverse engineer programs and many tools designed to help in the task. When reverse engineering a program, we want to essentially follow the following steps with the goal of understanding the program in mind.
+
+- Acquire information about the program.
+- Identify key locations in the program.
+- Determine control flow and critical points.
+- Map the program.
+
+A typical workflow for a basic reverse engineer to look at a program would look something like this:
+
+Determine the program architecture.
+file <binname> 
+If trying to exploit the program, figure out what protections it has enabled.
+checksec <binname>
+Open the program in gdb.
+gdb -q ./<binname>
+
+Now GDB has a lot of functionality, some of which we'll make use of and some of which we won't. I will be doing ALL of my examples using GDB though, so it'll serve you well to know how to use it (and it'll help you a million times over in classes!).
+
+To set the disassembly printouts to Intel syntax use:
+set disassembly-flavor intel
+
+To print the functions in a binary use:
+info function
+
+To print information about the current stack frame use:
+info frame
+
+To set a breakpoint at a function use:
+break <funcname>
+
+To break at an address use:
+break *0x<address>
+
+To run the program use:
+run
+
+To continue execution to the next breakpoint use:
+continue
+
+To print something, use:
+print <thing>
+
+Note that this supports a LOT of stuff, so check out https://www.gnu.org/software/gdb/documentation/:
+
+To examine something (a register or area of memory), use:
+x/<FORMAT> <address or reg>
+
+
+To disassemble a function use:
+disassemble <funcname>
+
+GDB can do a HELL of a lot more than just the above but that's what you need to be *able* to use it for RE. 
+

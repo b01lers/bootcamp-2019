@@ -1,0 +1,276 @@
+Now we're going to talk a little about executable formats. In modern computers there are many formats, but we're concerned with three (with a couple extras I'll mention but not talk about).
+
+-ELF (Executable Linkable Format) is used on Linux.
+-PE (Portable Executable) is used on Windows.
+-Mach-O is used on MacOS/OSX.
+
+-DOS is used for old windows executables.
+
+These formats are different in some ways but the basics are always the same. They contain the information and operating system needs to run a program. 
+
+First, let's talk about the ELF structure. You can read about this in depth at https://en.wikipedia.org/wiki/Executable_and_Linkable_Format (which incidentally is where I double checked my info. Google stuff, kids!).
+
+We have an example file, 00-hello-world. We're going to get a lot of output but let's do the following:
+
+prompt> readelf -a 00-hello-world
+Like I said, that's a lot. Let's go through it one at a time.
+
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              DYN (Shared object file)
+  Machine:                           Advanced Micro Devices X86-64
+  Version:                           0x1
+  Entry point address:               0x1050
+  Start of program headers:          64 (bytes into file)
+  Start of section headers:          16952 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           56 (bytes)
+  Number of program headers:         11
+  Size of section headers:           64 (bytes)
+  Number of section headers:         34
+  Section header string table index: 33
+
+This ELF header gives the machine critical information about the program. We can see the Operating System, what ABI (Application Binary Interface) it is compiled for, what machine it is compatible with, and more.
+
+ELF Files have sections, and we don't care about all (or even most) of these sections. The sections in this program are listed below:
+
+Section Headers:
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [ 0]                   NULL             0000000000000000  00000000
+       0000000000000000  0000000000000000           0     0     0
+  [ 1] .interp           PROGBITS         00000000000002a8  000002a8
+       000000000000001c  0000000000000000   A       0     0     1
+  [ 2] .note.gnu.build-i NOTE             00000000000002c4  000002c4
+       0000000000000024  0000000000000000   A       0     0     4
+  [ 3] .note.ABI-tag     NOTE             00000000000002e8  000002e8
+       0000000000000020  0000000000000000   A       0     0     4
+  [ 4] .gnu.hash         GNU_HASH         0000000000000308  00000308
+       000000000000001c  0000000000000000   A       5     0     8
+  [ 5] .dynsym           DYNSYM           0000000000000328  00000328
+       00000000000000c0  0000000000000018   A       6     1     8
+  [ 6] .dynstr           STRTAB           00000000000003e8  000003e8
+       000000000000009d  0000000000000000   A       0     0     1
+  [ 7] .gnu.version      VERSYM           0000000000000486  00000486
+       0000000000000010  0000000000000002   A       5     0     2
+  [ 8] .gnu.version_r    VERNEED          0000000000000498  00000498
+       0000000000000030  0000000000000000   A       6     1     8
+  [ 9] .rela.dyn         RELA             00000000000004c8  000004c8
+       00000000000000c0  0000000000000018   A       5     0     8
+  [10] .rela.plt         RELA             0000000000000588  00000588
+       0000000000000030  0000000000000018  AI       5    22     8
+  [11] .init             PROGBITS         0000000000001000  00001000
+       000000000000001b  0000000000000000  AX       0     0     4
+  [12] .plt              PROGBITS         0000000000001020  00001020
+       0000000000000030  0000000000000010  AX       0     0     16
+  [13] .text             PROGBITS         0000000000001050  00001050
+       00000000000001d5  0000000000000000  AX       0     0     16
+  [14] .fini             PROGBITS         0000000000001228  00001228
+       000000000000000d  0000000000000000  AX       0     0     4
+  [15] .rodata           PROGBITS         0000000000002000  00002000
+       0000000000000004  0000000000000004  AM       0     0     4
+  [16] .eh_frame_hdr     PROGBITS         0000000000002004  00002004
+       0000000000000034  0000000000000000   A       0     0     4
+  [17] .eh_frame         PROGBITS         0000000000002038  00002038
+       00000000000000d8  0000000000000000   A       0     0     8
+  [18] .init_array       INIT_ARRAY       0000000000003de8  00002de8
+       0000000000000008  0000000000000008  WA       0     0     8
+  [19] .fini_array       FINI_ARRAY       0000000000003df0  00002df0
+       0000000000000008  0000000000000008  WA       0     0     8
+  [20] .dynamic          DYNAMIC          0000000000003df8  00002df8
+       00000000000001e0  0000000000000010  WA       6     0     8
+  [21] .got              PROGBITS         0000000000003fd8  00002fd8
+       0000000000000028  0000000000000008  WA       0     0     8
+  [22] .got.plt          PROGBITS         0000000000004000  00003000
+       0000000000000028  0000000000000008  WA       0     0     8
+  [23] .data             PROGBITS         0000000000004028  00003028
+       0000000000000010  0000000000000000  WA       0     0     8
+  [24] .bss              NOBITS           0000000000004038  00003038
+       0000000000000008  0000000000000000  WA       0     0     1
+  [25] .comment          PROGBITS         0000000000000000  00003038
+       0000000000000011  0000000000000001  MS       0     0     1
+  [26] .debug_aranges    PROGBITS         0000000000000000  00003049
+       0000000000000030  0000000000000000           0     0     1
+  [27] .debug_info       PROGBITS         0000000000000000  00003079
+       0000000000000345  0000000000000000           0     0     1
+  [28] .debug_abbrev     PROGBITS         0000000000000000  000033be
+       00000000000000f9  0000000000000000           0     0     1
+  [29] .debug_line       PROGBITS         0000000000000000  000034b7
+       0000000000000106  0000000000000000           0     0     1
+  [30] .debug_str        PROGBITS         0000000000000000  000035bd
+       0000000000000271  0000000000000001  MS       0     0     1
+  [31] .symtab           SYMTAB           0000000000000000  00003830
+       0000000000000690  0000000000000018          32    50     8
+  [32] .strtab           STRTAB           0000000000000000  00003ec0
+       000000000000022f  0000000000000000           0     0     1
+  [33] .shstrtab         STRTAB           0000000000000000  000040ef
+       0000000000000143  0000000000000000           0     0     1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  l (large), p (processor specific)
+
+But the ones we actually care about are:
+  [12] .plt              PROGBITS         0000000000001020  00001020
+       0000000000000030  0000000000000010  AX       0     0     16
+  [13] .text             PROGBITS         0000000000001050  00001050
+       00000000000001d5  0000000000000000  AX       0     0     16
+  [15] .rodata           PROGBITS         0000000000002000  00002000
+       0000000000000004  0000000000000004  AM       0     0     4
+  [21] .got              PROGBITS         0000000000003fd8  00002fd8
+       0000000000000028  0000000000000008  WA       0     0     8
+  [22] .got.plt          PROGBITS         0000000000004000  00003000
+       0000000000000028  0000000000000008  WA       0     0     8
+  [23] .data             PROGBITS         0000000000004028  00003028
+       0000000000000010  0000000000000000  WA       0     0     8
+  [24] .bss              NOBITS           0000000000004038  00003038
+       0000000000000008  0000000000000000  WA       0     0     1
+
+For the most part, anything we need to worry about will be in these sections. I covered what the .text, .data, .bss sections were in the assembly primer, but we have a couple more here.
+
+.got is the Global Offset Table, a table of addresses stored in the data section. This holds offsets to functions in a dynamically-loaded library. These addresses are not known at compile time, so the linker fills in these addresses at link-time (hence linking) so the program knows where in the glibc shared object a function like, say, printf is located. Once the program knows the address of printf, it calls it using something called the:
+
+.plt - PLT (Procedure Linkage Table). The PLT performs a call to the external procedure whenever it is called in code, and uses the address in the GOT to do so.
+
+The program headers tell the system (basically) what to do.
+
+Program Headers:
+  Type           Offset             VirtAddr           PhysAddr
+                 FileSiz            MemSiz              Flags  Align
+  PHDR           0x0000000000000040 0x0000000000000040 0x0000000000000040
+                 0x0000000000000268 0x0000000000000268  R      0x8
+  INTERP         0x00000000000002a8 0x00000000000002a8 0x00000000000002a8
+                 0x000000000000001c 0x000000000000001c  R      0x1
+      [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
+  LOAD           0x0000000000000000 0x0000000000000000 0x0000000000000000
+                 0x00000000000005b8 0x00000000000005b8  R      0x1000
+  LOAD           0x0000000000001000 0x0000000000001000 0x0000000000001000
+                 0x0000000000000235 0x0000000000000235  R E    0x1000
+  LOAD           0x0000000000002000 0x0000000000002000 0x0000000000002000
+                 0x0000000000000110 0x0000000000000110  R      0x1000
+  LOAD           0x0000000000002de8 0x0000000000003de8 0x0000000000003de8
+                 0x0000000000000250 0x0000000000000258  RW     0x1000
+  DYNAMIC        0x0000000000002df8 0x0000000000003df8 0x0000000000003df8
+                 0x00000000000001e0 0x00000000000001e0  RW     0x8
+  NOTE           0x00000000000002c4 0x00000000000002c4 0x00000000000002c4
+                 0x0000000000000044 0x0000000000000044  R      0x4
+  GNU_EH_FRAME   0x0000000000002004 0x0000000000002004 0x0000000000002004
+                 0x0000000000000034 0x0000000000000034  R      0x4
+  GNU_STACK      0x0000000000000000 0x0000000000000000 0x0000000000000000
+                 0x0000000000000000 0x0000000000000000  RW     0x10
+  GNU_RELRO      0x0000000000002de8 0x0000000000003de8 0x0000000000003de8
+                 0x0000000000000218 0x0000000000000218  R      0x1
+
+The section to segment mapping simply shows which sections are in which program segment.
+
+ Section to Segment mapping:
+  Segment Sections...
+   00
+   01     .interp
+   02     .interp .note.gnu.build-id .note.ABI-tag .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt
+   03     .init .plt .text .fini
+   04     .rodata .eh_frame_hdr .eh_frame
+   05     .init_array .fini_array .dynamic .got .got.plt .data .bss
+   06     .dynamic
+   07     .note.gnu.build-id .note.ABI-tag
+   08     .eh_frame_hdr
+   09
+   10     .init_array .fini_array .dynamic .got
+
+The plt section contains the functions that call into the shared library. Look at the first line, we have a JUMP into puts, the function used by printf in the backend when the compiler optimizes a string literal print. 
+
+Relocation section '.rela.plt' at offset 0x588 contains 2 entries:
+  Offset          Info           Type           Sym. Value    Sym. Name + Addend
+000000004018  000200000007 R_X86_64_JUMP_SLO 0000000000000000 puts@GLIBC_2.2.5 + 0
+000000004020  000300000007 R_X86_64_JUMP_SLO 0000000000000000 __stack_chk_fail@GLIBC_2.4 + 0
+
+The symbol table is exactly what it sounds like, a table of symbols in the binary. For example, 
+    66: 0000000000001149    94 FUNC    GLOBAL DEFAULT   13 main
+Is the description of the symbol for main. It is a FUNCTION at GLOBAL SCOPE.
+
+Symbol table '.symtab' contains 70 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+     1: 00000000000002a8     0 SECTION LOCAL  DEFAULT    1
+     2: 00000000000002c4     0 SECTION LOCAL  DEFAULT    2
+     3: 00000000000002e8     0 SECTION LOCAL  DEFAULT    3
+     4: 0000000000000308     0 SECTION LOCAL  DEFAULT    4
+     5: 0000000000000328     0 SECTION LOCAL  DEFAULT    5
+     6: 00000000000003e8     0 SECTION LOCAL  DEFAULT    6
+     7: 0000000000000486     0 SECTION LOCAL  DEFAULT    7
+     8: 0000000000000498     0 SECTION LOCAL  DEFAULT    8
+     9: 00000000000004c8     0 SECTION LOCAL  DEFAULT    9
+    10: 0000000000000588     0 SECTION LOCAL  DEFAULT   10
+    11: 0000000000001000     0 SECTION LOCAL  DEFAULT   11
+    12: 0000000000001020     0 SECTION LOCAL  DEFAULT   12
+    13: 0000000000001050     0 SECTION LOCAL  DEFAULT   13
+    14: 0000000000001228     0 SECTION LOCAL  DEFAULT   14
+    15: 0000000000002000     0 SECTION LOCAL  DEFAULT   15
+    16: 0000000000002004     0 SECTION LOCAL  DEFAULT   16
+    17: 0000000000002038     0 SECTION LOCAL  DEFAULT   17
+    18: 0000000000003de8     0 SECTION LOCAL  DEFAULT   18
+    19: 0000000000003df0     0 SECTION LOCAL  DEFAULT   19
+    20: 0000000000003df8     0 SECTION LOCAL  DEFAULT   20
+    21: 0000000000003fd8     0 SECTION LOCAL  DEFAULT   21
+    22: 0000000000004000     0 SECTION LOCAL  DEFAULT   22
+    23: 0000000000004028     0 SECTION LOCAL  DEFAULT   23
+    24: 0000000000004038     0 SECTION LOCAL  DEFAULT   24
+    25: 0000000000000000     0 SECTION LOCAL  DEFAULT   25
+    26: 0000000000000000     0 SECTION LOCAL  DEFAULT   26
+    27: 0000000000000000     0 SECTION LOCAL  DEFAULT   27
+    28: 0000000000000000     0 SECTION LOCAL  DEFAULT   28
+    29: 0000000000000000     0 SECTION LOCAL  DEFAULT   29
+    30: 0000000000000000     0 SECTION LOCAL  DEFAULT   30
+    31: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS init.c
+    32: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtstuff.c
+    33: 0000000000001080     0 FUNC    LOCAL  DEFAULT   13 deregister_tm_clones
+    34: 00000000000010b0     0 FUNC    LOCAL  DEFAULT   13 register_tm_clones
+    35: 00000000000010f0     0 FUNC    LOCAL  DEFAULT   13 __do_global_dtors_aux
+    36: 0000000000004038     1 OBJECT  LOCAL  DEFAULT   24 completed.7383
+    37: 0000000000003df0     0 OBJECT  LOCAL  DEFAULT   19 __do_global_dtors_aux_fin
+    38: 0000000000001140     0 FUNC    LOCAL  DEFAULT   13 frame_dummy
+    39: 0000000000003de8     0 OBJECT  LOCAL  DEFAULT   18 __frame_dummy_init_array_
+    40: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS 00-hello-world.c
+    41: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtstuff.c
+    42: 000000000000210c     0 OBJECT  LOCAL  DEFAULT   17 __FRAME_END__
+    43: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS
+    44: 0000000000003df0     0 NOTYPE  LOCAL  DEFAULT   18 __init_array_end
+    45: 0000000000003df8     0 OBJECT  LOCAL  DEFAULT   20 _DYNAMIC
+    46: 0000000000003de8     0 NOTYPE  LOCAL  DEFAULT   18 __init_array_start
+    47: 0000000000002004     0 NOTYPE  LOCAL  DEFAULT   16 __GNU_EH_FRAME_HDR
+    48: 0000000000004000     0 OBJECT  LOCAL  DEFAULT   22 _GLOBAL_OFFSET_TABLE_
+    49: 0000000000001000     0 FUNC    LOCAL  DEFAULT   11 _init
+    50: 0000000000001220     5 FUNC    GLOBAL DEFAULT   13 __libc_csu_fini
+    51: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab
+    52: 0000000000004028     0 NOTYPE  WEAK   DEFAULT   23 data_start
+    53: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND puts@@GLIBC_2.2.5
+    54: 0000000000004038     0 NOTYPE  GLOBAL DEFAULT   23 _edata
+    55: 0000000000001228     0 FUNC    GLOBAL HIDDEN    14 _fini
+    56: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __stack_chk_fail@@GLIBC_2
+    57: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __libc_start_main@@GLIBC_
+    58: 0000000000004028     0 NOTYPE  GLOBAL DEFAULT   23 __data_start
+    59: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
+    60: 0000000000004030     0 OBJECT  GLOBAL HIDDEN    23 __dso_handle
+    61: 0000000000002000     4 OBJECT  GLOBAL DEFAULT   15 _IO_stdin_used
+    62: 00000000000011b0   101 FUNC    GLOBAL DEFAULT   13 __libc_csu_init
+    63: 0000000000004040     0 NOTYPE  GLOBAL DEFAULT   24 _end
+    64: 0000000000001050    47 FUNC    GLOBAL DEFAULT   13 _start
+    65: 0000000000004038     0 NOTYPE  GLOBAL DEFAULT   24 __bss_start
+    66: 0000000000001149    94 FUNC    GLOBAL DEFAULT   13 main
+    67: 0000000000004038     0 OBJECT  GLOBAL HIDDEN    23 __TMC_END__
+    68: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
+    69: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@@GLIBC_2.2
+
+Binaries can be stripped. Stripping removes information from a binary that is unnecessary to its functionality. Unfortunately, stripping a binary makes it WAY harder to read because there are no longer function names or any identifying information present. For example, stripping the hello world binary turns the symbol table from the above to:
+
+
+
+
+Yeah that's right. Nothing. Because we removed it. Have fun reversing THAT.
