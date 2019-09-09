@@ -1,4 +1,0 @@
-The picture shows the formation of a system of equation using the ciphertext and the known flag format. This is one approach to solve the challenge, one other way is through the use of online solvers that brute force a and b, such as dcode. In an actual CTF I would recommend the online solver since it will be a faster solve.
-
-
-Also note that we are using the standard alphabet so we need not consider the underscores or the zero the should remain the same from decryption.
