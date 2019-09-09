@@ -1,0 +1,4 @@
+This time I'll XOR a message with one of the 26 letters in the alphabet can you determine which UPPERCASE letter I used.
+Flag format: b00tcamp{...}
+
+Ciphertext: 3a68682c3b393528233a2a2d2c6b3e682a3b69363f073e692a2b2c073a692c2b25

@@ -1,0 +1,7 @@
+This time around you'll have to brute force the key.
+Here are some hints:
+The length of the key is 8.
+The flag format is b00tcamp{flag_goes_here}
+Notice len(b00tcamp) is also 8.
+
+Ciphertext:

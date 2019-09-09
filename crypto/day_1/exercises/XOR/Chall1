@@ -1,0 +1,9 @@
+We're just getting started. I xor'd a message with the key 'A' can you retrieve the message given the ciphertext and the key? Remember the properties. You can use binascii hexlify/unhexlify for converting the ciphertext. 
+Flag format: b00tcamp{...}
+
+i.e. 
+from binascii import hexlify,unhexlify
+cipertext = unhexlify('the string below')
+
+Cipertext: 2371713522202c313a2f712f33202f25712c1e712f721e35702c721e3175253c 
+Key: A
