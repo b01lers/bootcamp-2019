@@ -1,7 +1,7 @@
-This time around you'll have to brute force the key.
+This time around you'll have to calculate the key.
 Here are some hints:
 The length of the key is 8.
 The flag format is b00tcamp{flag_goes_here}
 Notice len(b00tcamp) is also 8.
 
-Ciphertext:
+Ciphertext: 1b0303002455031702016d4c7a065b5104
