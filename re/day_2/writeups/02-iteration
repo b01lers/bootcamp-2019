@@ -1,0 +1,179 @@
+Like before, the selection demo has a series of functions called from main, and like before, we'll be looking for control flow that's exemplified by where and how jumps are used (you'll realize this is all control flow is: a sequence of jumps).
+
+So let's look at the first of those:
+
+gdb> disas static_while
+
+   0x0000000000001159 <+0>:     push   rbp
+   0x000000000000115a <+1>:     mov    rbp,rsp
+   0x000000000000115d <+4>:     sub    rsp,0x10
+   0x0000000000001161 <+8>:     mov    DWORD PTR [rbp-0x4],0x0
+   0x0000000000001168 <+15>:    jmp    0x1186 <static_while+45>
+   0x000000000000116a <+17>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x000000000000116d <+20>:    lea    edx,[rax+0x1]
+   0x0000000000001170 <+23>:    mov    DWORD PTR [rbp-0x4],edx
+   0x0000000000001173 <+26>:    mov    esi,eax
+   0x0000000000001175 <+28>:    lea    rdi,[rip+0xe8c]        # 0x2008
+   0x000000000000117c <+35>:    mov    eax,0x0
+   0x0000000000001181 <+40>:    call   0x1040 <printf@plt>
+   0x0000000000001186 <+45>:    cmp    DWORD PTR [rbp-0x4],0x9
+   0x000000000000118a <+49>:    jle    0x116a <static_while+17>
+   0x000000000000118c <+51>:    nop
+   0x000000000000118d <+52>:    leave  
+   0x000000000000118e <+53>:    ret 
+
+First, this moves a value 0x0 into [rbp-0x4]:
+   0x0000000000001161 <+8>:     mov    DWORD PTR [rbp-0x4],0x0
+Then, we unconditionally jump to a compare to 0x9 and a jump:
+   0x0000000000001180 <+39>:    cmp    DWORD PTR [rbp-0x4],0x9
+   0x0000000000001184 <+43>:    jle    0x116a <static_while+17>
+This is our loop condition, and since it is at the bottom of the loop structure, it is *probably* a while loop (but really, while and for loops are the same; for is just a shorthand). Regardless, from there, the program executes the body of the loop:
+   0x000000000000116a <+17>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x000000000000116d <+20>:    lea    edx,[rax+0x1]
+   0x0000000000001170 <+23>:    mov    DWORD PTR [rbp-0x4],edx
+   0x0000000000001173 <+26>:    mov    esi,eax
+   0x0000000000001175 <+28>:    lea    rdi,[rip+0xe8c]        # 0x2008
+   0x000000000000117c <+35>:    mov    eax,0x0
+   0x0000000000001181 <+40>:    call   0x1040 <printf@plt>
+
+Notice the lea instruction. It adds 1 to the value we just retrieved from our loop condition. We now know the while loop increments by 1 (unless we find another increment somewhere!).
+
+The rest of the loop body just sets up a printf call and prints the string, the important part of a loop structure is really just the preamble (where the program sets up our loop condition value) and the actual jump instruction that forms the loop with the loop condition's compare value.
+
+We've seen a while loop, now let's look at the differences between a while and a for loop:
+
+gdb> disas static_for
+
+   0x000000000000118f <+0>:     push   rbp
+   0x0000000000001190 <+1>:     mov    rbp,rsp
+   0x0000000000001193 <+4>:     sub    rsp,0x10
+   0x0000000000001197 <+8>:     mov    DWORD PTR [rbp-0x4],0x0
+   0x000000000000119e <+15>:    jmp    0x11ba <static_for+43>
+   0x00000000000011a0 <+17>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x00000000000011a3 <+20>:    mov    esi,eax
+   0x00000000000011a5 <+22>:    lea    rdi,[rip+0xe77]        # 0x2023
+   0x00000000000011ac <+29>:    mov    eax,0x0
+   0x00000000000011b1 <+34>:    call   0x1040 <printf@plt>
+   0x00000000000011b6 <+39>:    add    DWORD PTR [rbp-0x4],0x1
+   0x00000000000011ba <+43>:    cmp    DWORD PTR [rbp-0x4],0x9
+   0x00000000000011be <+47>:    jle    0x11a0 <static_for+17>
+   0x00000000000011c0 <+49>:    nop
+   0x00000000000011c1 <+50>:    leave
+   0x00000000000011c2 <+51>:    ret
+
+Now, most of this looks not just similar, but *exactly* the same! The main difference is the add instruction before the check:
+   0x00000000000011b6 <+39>:    add    DWORD PTR [rbp-0x4],0x1
+   0x00000000000011ba <+43>:    cmp    DWORD PTR [rbp-0x4],0x9
+   0x00000000000011be <+47>:    jle    0x11a0 <static_for+17>
+
+Since this is a for loop, we know the header includes the increment, so we see that happen right before the loop condition instead of buried inside the loop.
+
+
+Now let's look at some dynamic loops that use variables as their conditions. They'll look (again) quite similar, but with key differences:
+
+gdb> disas basic_while
+
+   0x00000000000011c3 <+0>:     push   rbp
+   0x00000000000011c4 <+1>:     mov    rbp,rsp
+   0x00000000000011c7 <+4>:     sub    rsp,0x20
+   0x00000000000011cb <+8>:     mov    DWORD PTR [rbp-0x14],edi
+   0x00000000000011ce <+11>:    mov    DWORD PTR [rbp-0x4],0x0
+   0x00000000000011d5 <+18>:    jmp    0x11f0 <basic_while+45>
+   0x00000000000011d7 <+20>:    mov    edx,DWORD PTR [rbp-0x14]
+   0x00000000000011da <+23>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x00000000000011dd <+26>:    mov    esi,eax
+   0x00000000000011df <+28>:    lea    rdi,[rip+0xe56]        # 0x203c
+   0x00000000000011e6 <+35>:    mov    eax,0x0
+   0x00000000000011eb <+40>:    call   0x1040 <printf@plt>
+   0x00000000000011f0 <+45>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x00000000000011f3 <+48>:    lea    edx,[rax+0x1]
+   0x00000000000011f6 <+51>:    mov    DWORD PTR [rbp-0x4],edx
+   0x00000000000011f9 <+54>:    cmp    DWORD PTR [rbp-0x14],eax
+   0x00000000000011fc <+57>:    jg     0x11d7 <basic_while+20>
+   0x00000000000011fe <+59>:    nop
+   0x00000000000011ff <+60>:    leave
+   0x0000000000001200 <+61>:    ret
+
+First, let's identify where on the stack our variables of interest are:
+   0x00000000000011cb <+8>:     mov    DWORD PTR [rbp-0x14],edi
+   0x00000000000011ce <+11>:    mov    DWORD PTR [rbp-0x4],0x0
+   0x00000000000011d5 <+18>:    jmp    0x11f0 <basic_while+45>
+As before, we have 0x0 at rbp-0x4, but now we also have our input register's value in rbp-0x14. This is followed again by that unconditional jump to the bottom of the loop. Let's look down there and see what our condition is:
+   0x00000000000011f9 <+54>:    cmp    DWORD PTR [rbp-0x14],eax
+   0x00000000000011fc <+57>:    jg     0x11d7 <basic_while+20>
+
+This is where it gets different. We know that rbp-0x14 is our input variable, but where did eax come from?
+   0x00000000000011f0 <+45>:    mov    eax,DWORD PTR [rbp-0x4]
+eax actually just came from our loop counter, so now we know that we are comparing our loop variable to our input variable (ie we will loop input number of times). We don't know yet how much we're incrementing by though. Let's look at this:
+   0x00000000000011f6 <+51>:    mov    DWORD PTR [rbp-0x4],edx
+Our value is replaced onto the stack by something from edx, which came from here:
+   0x00000000000011f3 <+48>:    lea    edx,[rax+0x1]
+And that rax came from:
+   0x00000000000011f0 <+45>:    mov    eax,DWORD PTR [rbp-0x4]
+So really this is just an optimization; since we already needed to pull the value of our counter for the comparison, it was easier for the compiler to just load that plus 1 and put it back on the stack than to change the type and perform an add operation. We've found our counter!
+
+The basic_for function is almost exactly the same in the same relation as the previous while->for relationship. Instead of an lea trick to add to our counter we have an explicit add operation:
+
+gdb> disas basic_for
+
+   0x0000000000001201 <+0>:     push   rbp
+   0x0000000000001202 <+1>:     mov    rbp,rsp
+   0x0000000000001205 <+4>:     sub    rsp,0x20
+   0x0000000000001209 <+8>:     mov    DWORD PTR [rbp-0x14],edi
+   0x000000000000120c <+11>:    mov    DWORD PTR [rbp-0x4],0x0
+   0x0000000000001213 <+18>:    jmp    0x1232 <basic_for+49>
+   0x0000000000001215 <+20>:    mov    edx,DWORD PTR [rbp-0x14]
+   0x0000000000001218 <+23>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x000000000000121b <+26>:    mov    esi,eax
+   0x000000000000121d <+28>:    lea    rdi,[rip+0xe33]        # 0x2057
+   0x0000000000001224 <+35>:    mov    eax,0x0
+   0x0000000000001229 <+40>:    call   0x1040 <printf@plt>
+   0x000000000000122e <+45>:    add    DWORD PTR [rbp-0x4],0x1
+   0x0000000000001232 <+49>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x0000000000001235 <+52>:    cmp    eax,DWORD PTR [rbp-0x14]
+   0x0000000000001238 <+55>:    jl     0x1215 <basic_for+20>
+   0x000000000000123a <+57>:    nop
+   0x000000000000123b <+58>:    leave
+   0x000000000000123c <+59>:    ret
+
+Let's take a look at something a little more complicated:
+
+gdb> disas nested_for
+
+   0x000000000000123d <+0>:     push   rbp
+   0x000000000000123e <+1>:     mov    rbp,rsp
+   0x0000000000001241 <+4>:     sub    rsp,0x20
+   0x0000000000001245 <+8>:     mov    DWORD PTR [rbp-0x14],edi
+   0x0000000000001248 <+11>:    mov    DWORD PTR [rbp-0x8],0x0
+   0x000000000000124f <+18>:    jmp    0x1283 <nested_for+70>
+   0x0000000000001251 <+20>:    mov    DWORD PTR [rbp-0x4],0x0
+   0x0000000000001258 <+27>:    jmp    0x1277 <nested_for+58>
+   0x000000000000125a <+29>:    mov    edx,DWORD PTR [rbp-0x14]
+   0x000000000000125d <+32>:    mov    eax,DWORD PTR [rbp-0x8]
+   0x0000000000001260 <+35>:    mov    esi,eax
+   0x0000000000001262 <+37>:    lea    rdi,[rip+0xe07]        # 0x2070
+   0x0000000000001269 <+44>:    mov    eax,0x0
+   0x000000000000126e <+49>:    call   0x1040 <printf@plt>
+   0x0000000000001273 <+54>:    add    DWORD PTR [rbp-0x4],0x1
+   0x0000000000001277 <+58>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x000000000000127a <+61>:    cmp    eax,DWORD PTR [rbp-0x14]
+   0x000000000000127d <+64>:    jl     0x125a <nested_for+29>
+   0x000000000000127f <+66>:    add    DWORD PTR [rbp-0x8],0x1
+   0x0000000000001283 <+70>:    mov    eax,DWORD PTR [rbp-0x8]
+   0x0000000000001286 <+73>:    cmp    eax,DWORD PTR [rbp-0x14]
+   0x0000000000001289 <+76>:    jl     0x1251 <nested_for+20>
+   0x000000000000128b <+78>:    nop
+   0x000000000000128c <+79>:    leave
+   0x000000000000128d <+80>:    ret
+
+This is a nested for loop, and we can tell by examining the bottom of the loops:
+   0x0000000000001273 <+54>:    add    DWORD PTR [rbp-0x4],0x1
+   0x0000000000001277 <+58>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x000000000000127a <+61>:    cmp    eax,DWORD PTR [rbp-0x14]
+   0x000000000000127d <+64>:    jl     0x125a <nested_for+29>
+   0x000000000000127f <+66>:    add    DWORD PTR [rbp-0x8],0x1
+   0x0000000000001283 <+70>:    mov    eax,DWORD PTR [rbp-0x8]
+   0x0000000000001286 <+73>:    cmp    eax,DWORD PTR [rbp-0x14]
+   0x0000000000001289 <+76>:    jl     0x1251 <nested_for+20>
+
+Instead of one compare/jump sequence, we have two. We can pretty easily identify our loop variables and conditions though!

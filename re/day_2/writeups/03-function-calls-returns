@@ -1,0 +1,115 @@
+Instead of looking at loops or if statements, we're just going to check out some calling convention stuff now. Programs are very complicated a lot of the time, but if you understand calling conventions, function calls, iteration, selection, and basic programming, you can understand anything given time and effort.
+
+So let's look at main this time:
+
+gdb> disas main
+
+sike I'm not gonna paste all that in here. We're gonna go step by step.
+
+First, we have three stack variables in main:
+   0x0000000000001349 <+15>:    mov    DWORD PTR [rbp-0xc],0x10
+   0x0000000000001350 <+22>:    mov    DWORD PTR [rbp-0x8],0x64
+   0x0000000000001357 <+29>:    mov    DWORD PTR [rbp-0x4],0x2d
+
+These all seem to be ints (dword) of different values.
+
+Our first call is to <single_call>:
+   0x000000000000135e <+36>:    mov    eax,DWORD PTR [rbp-0xc]
+   0x0000000000001361 <+39>:    mov    edi,eax
+   0x0000000000001363 <+41>:    call   0x1149 <single_call>
+We move one of our three variables from earlier into eax and then to edi. Remember rdi/edi is the first argument register in the sysv calling convention! We then make our call to single_call:
+
+gdb> disas single_call
+
+   0x0000000000001151 <+8>:     mov    DWORD PTR [rbp-0x4],edi
+   0x0000000000001154 <+11>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x0000000000001157 <+14>:    mov    esi,eax
+   0x0000000000001159 <+16>:    lea    rdi,[rip+0xea4]        # 0x2004
+   0x0000000000001160 <+23>:    mov    eax,0x0
+   0x0000000000001165 <+28>:    call   0x1040 <printf@plt>
+
+Sure enough, because of calling convention the function knows to use edi as its input argument!
+
+Next, let's look at multi_call:
+   0x0000000000001372 <+56>:    mov    edx,DWORD PTR [rbp-0x4]
+   0x0000000000001375 <+59>:    mov    ecx,DWORD PTR [rbp-0x8]
+   0x0000000000001378 <+62>:    mov    eax,DWORD PTR [rbp-0xc]
+   0x000000000000137b <+65>:    mov    esi,ecx
+   0x000000000000137d <+67>:    mov    edi,eax
+   0x000000000000137f <+69>:    call   0x1197 <multi_call>
+We move our variables around a couple times but notice that the order ends up being edi, esi, edx (the first three arguments in the sysv convention)
+
+Let's now look at var_arg:
+   0x0000000000001396 <+92>:    sub    rsp,0x8
+   0x000000000000139a <+96>:    push   0x1
+   0x000000000000139c <+98>:    push   0x3
+   0x000000000000139e <+100>:   push   0x5
+   0x00000000000013a0 <+102>:   push   0x3
+   0x00000000000013a2 <+104>:   push   0x6
+   0x00000000000013a4 <+106>:   mov    r9d,0x1
+   0x00000000000013aa <+112>:   mov    r8d,0x3
+   0x00000000000013b0 <+118>:   mov    ecx,0x5
+   0x00000000000013b5 <+123>:   mov    edx,0x3
+   0x00000000000013ba <+128>:   mov    esi,0x6
+   0x00000000000013bf <+133>:   mov    edi,0xa
+   0x00000000000013c4 <+138>:   mov    eax,0x0
+   0x00000000000013c9 <+143>:   call   0x1203 <var_arg>
+
+The sysv calling convention only passes 6 arguments in registers, edi, esi, edx, ecx, r8, and r9. After that, arguments are passed in stack space. Notice that the arguments are not exactly in order, eax has 0 moved into it despite not being a parameter.
+
+Inside var_arg, we can see the stack-passed arguments being accessed.
+   0x000000000000123b <+56>:    movaps XMMWORD PTR [rbp-0x80],xmm0
+   0x000000000000123f <+60>:    movaps XMMWORD PTR [rbp-0x70],xmm1
+   0x0000000000001243 <+64>:    movaps XMMWORD PTR [rbp-0x60],xmm2
+   0x0000000000001247 <+68>:    movaps XMMWORD PTR [rbp-0x50],xmm3
+   0x000000000000124b <+72>:    movaps XMMWORD PTR [rbp-0x40],xmm4
+   0x000000000000124f <+76>:    movaps XMMWORD PTR [rbp-0x30],xmm5
+   0x0000000000001253 <+80>:    movaps XMMWORD PTR [rbp-0x20],xmm6
+   0x0000000000001257 <+84>:    movaps XMMWORD PTR [rbp-0x10],xmm7
+
+Yes, this is a weird instruction to use and a weird (floating point) register. Don't worry about that, the key is that we can see all these values being pulled from the stack in here.
+
+
+Finally, let's look at the call to many_args.
+   0x0000000000001461 <+148>:   add    rsp,0x30
+   0x0000000000001465 <+152>:   push   0x2
+   0x0000000000001467 <+154>:   push   0x5
+   0x0000000000001469 <+156>:   push   0x3
+   0x000000000000146b <+158>:   push   0x7
+   0x000000000000146d <+160>:   mov    r9d,0x1
+   0x0000000000001473 <+166>:   mov    r8d,0x3
+   0x0000000000001479 <+172>:   mov    ecx,0x5
+   0x000000000000147e <+177>:   mov    edx,0x3
+   0x0000000000001483 <+182>:   mov    esi,0x6
+   0x0000000000001488 <+187>:   mov    edi,0xa
+   0x000000000000148d <+192>:   call   0x133a <many_args>
+As before, we can see that the values not passed in registers are pushed onto the stack.
+
+And in the function instead of using the XMM registers we get a much more standard variable retrieval:
+   0x0000000000001342 <+8>:     mov    DWORD PTR [rbp-0x4],edi
+   0x0000000000001345 <+11>:    mov    DWORD PTR [rbp-0x8],esi
+   0x0000000000001348 <+14>:    mov    DWORD PTR [rbp-0xc],edx
+   0x000000000000134b <+17>:    mov    DWORD PTR [rbp-0x10],ecx
+   0x000000000000134e <+20>:    mov    DWORD PTR [rbp-0x14],r8d
+   0x0000000000001352 <+24>:    mov    DWORD PTR [rbp-0x18],r9d
+   0x0000000000001356 <+28>:    mov    r8d,DWORD PTR [rbp-0x14]
+   0x000000000000135a <+32>:    mov    edi,DWORD PTR [rbp-0x10]
+   0x000000000000135d <+35>:    mov    ecx,DWORD PTR [rbp-0xc]
+   0x0000000000001360 <+38>:    mov    edx,DWORD PTR [rbp-0x8]
+   0x0000000000001363 <+41>:    mov    eax,DWORD PTR [rbp-0x4]
+   0x0000000000001366 <+44>:    sub    rsp,0x8
+   0x000000000000136a <+48>:    mov    esi,DWORD PTR [rbp+0x28]
+   0x000000000000136d <+51>:    push   rsi
+   0x000000000000136e <+52>:    mov    esi,DWORD PTR [rbp+0x20]
+   0x0000000000001371 <+55>:    push   rsi
+   0x0000000000001372 <+56>:    mov    esi,DWORD PTR [rbp+0x18]
+   0x0000000000001375 <+59>:    push   rsi
+   0x0000000000001376 <+60>:    mov    esi,DWORD PTR [rbp+0x10]
+   0x0000000000001379 <+63>:    push   rsi
+   0x000000000000137a <+64>:    mov    esi,DWORD PTR [rbp-0x18]
+   0x000000000000137d <+67>:    push   rsi
+   0x000000000000137e <+68>:    mov    r9d,r8d
+   0x0000000000001381 <+71>:    mov    r8d,edi
+   0x0000000000001384 <+74>:    mov    esi,eax
+
+This is all variable setup, and you'll note that as before we have a lot of storing variables to the stack and placing them in registers. However, since we're calling printf in this function (a function call! hint hint!) we need to set up that call instruction within this one, and since we have more than 6 arguments some of them will be passed on the stack. Look at lines +44 through +67 to see how the program pulls the values off the stack where they were passed (note the [rbp+0x28] as opposed to [rbp-0x00]). These values are above the current stack frame.
