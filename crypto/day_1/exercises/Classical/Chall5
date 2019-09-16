@@ -1,8 +1,0 @@
-Hints: WWII & You may need to adjust Position and Ring Values of each Rotor. Watch for misaligned phrases.
-Wrap flag in b0ctf{...} and maintain spaces and capitalization
-Ciphertext: OGIRC SRJJG KXWNG UQIPY IH
-
-LEFT,MIDDLE,RIGHT Rotor - IV
-Reflector - B (UKW B)
-Machine - Enigma M3
-Plugboard should be omitted
